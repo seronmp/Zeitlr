@@ -17,7 +17,7 @@
                 <p class="text-gray-600 mb-6">Stundenerfassungs-Management für Ihr Team</p>
                 
                 <!-- Login Form -->
-                <form id="loginFormElement" onsubmit="event.preventDefault(); loginUser();" class="space-y-4">
+                <form id="loginFormElement" onsubmit="event.preventDefault(); window.loginUser();" class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">E-Mail</label>
                         <input type="email" id="loginEmail" autocomplete="email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="you@example.com">
@@ -29,7 +29,7 @@
                     <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">
                         Anmelden
                     </button>
-                    <button type="button" onclick="toggleSignup()" class="w-full text-blue-600 hover:text-blue-700 font-semibold py-2">
+                    <button type="button" onclick="window.toggleSignup()" class="w-full text-blue-600 hover:text-blue-700 font-semibold py-2">
                         Neues Konto erstellen
                     </button>
                 </form>
@@ -37,7 +37,7 @@
                 <!-- Signup Form -->
                 <div id="signupForm" class="hidden mt-6 pt-6 border-t border-gray-200">
                     <h2 class="text-xl font-bold text-gray-800 mb-4">Registrieren</h2>
-                    <form onsubmit="event.preventDefault(); signupUser();" class="space-y-4">
+                    <form onsubmit="event.preventDefault(); window.signupUser();" class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Name</label>
                             <input type="text" id="signupName" autocomplete="name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Ihr Name">
@@ -53,7 +53,7 @@
                         <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition">
                             Konto erstellen
                         </button>
-                        <button type="button" onclick="toggleSignup()" class="w-full text-gray-600 hover:text-gray-700 py-2">
+                        <button type="button" onclick="window.toggleSignup()" class="w-full text-gray-600 hover:text-gray-700 py-2">
                             Abbrechen
                         </button>
                     </form>
@@ -72,7 +72,7 @@
                         </div>
                         <div class="flex items-center space-x-4">
                             <span id="userDisplayName" class="text-gray-700 font-medium"></span>
-                            <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                            <button onclick="window.logout()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition">
                                 Abmelden
                             </button>
                         </div>
@@ -129,13 +129,13 @@
 
                     <!-- Clock Buttons -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                        <button id="clockInBtn" onclick="clockIn()" class="hidden bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition text-lg">
+                        <button id="clockInBtn" onclick="window.clockIn()" class="hidden bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition text-lg">
                             ✓ Anstempeln
                         </button>
-                        <button id="clockOutBtn" onclick="clockOut()" class="hidden bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition text-lg">
+                        <button id="clockOutBtn" onclick="window.clockOut()" class="hidden bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition text-lg">
                             ✕ Abstempeln
                         </button>
-                        <button id="breakBtn" onclick="toggleBreak()" class="hidden bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-lg transition text-lg">
+                        <button id="breakBtn" onclick="window.toggleBreak()" class="hidden bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-lg transition text-lg">
                             ⏸ Pause
                         </button>
                     </div>
@@ -163,7 +163,7 @@
                 <div class="bg-white rounded-lg shadow-lg p-8">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-2xl font-bold text-gray-800">Stundenerfassungshistorie</h2>
-                        <button onclick="exportToCSV()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                        <button onclick="window.exportToCSV()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">
                             📥 Als CSV exportieren
                         </button>
                     </div>
@@ -472,7 +472,7 @@
                         <td class="px-4 py-3 text-gray-900">${entry.project || '—'}</td>
                         <td class="px-4 py-3 text-gray-600 text-xs">${entry.notes || '—'}</td>
                         <td class="px-4 py-3">
-                            <button onclick="deleteEntry('${entry.id}')" class="text-red-600 hover:text-red-800 font-semibold">
+                            <button onclick="window.deleteEntry('${entry.id}')" class="text-red-600 hover:text-red-800 font-semibold">
                                 Löschen
                             </button>
                         </td>
@@ -559,6 +559,17 @@
             link.download = `Zeiterfassung_${new Date().toISOString().split('T')[0]}.csv`;
             link.click();
         }
+
+        // Explicitly attach to window scope to ensure inline onclick handlers resolve properly
+        window.loginUser = loginUser;
+        window.signupUser = signupUser;
+        window.logout = logout;
+        window.toggleSignup = toggleSignup;
+        window.clockIn = clockIn;
+        window.clockOut = clockOut;
+        window.toggleBreak = toggleBreak;
+        window.deleteEntry = deleteEntry;
+        window.exportToCSV = exportToCSV;
     </script>
 </body>
 </html>
