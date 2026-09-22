@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stundenerfassungs-App</title>
+    <!-- Tailwind CSS (Play CDN für Development - für Produktion bitte via CLI/PostCSS einbinden) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -15,45 +16,47 @@
                 <h1 class="text-3xl font-bold text-gray-800 mb-2">Zeiterfassung</h1>
                 <p class="text-gray-600 mb-6">Stundenerfassungs-Management für Ihr Team</p>
                 
-                <div class="space-y-4">
+                <!-- Login Form -->
+                <form id="loginFormElement" onsubmit="event.preventDefault(); loginUser();" class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">E-Mail</label>
-                        <input type="email" id="loginEmail" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="you@example.com">
+                        <input type="email" id="loginEmail" autocomplete="email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="you@example.com">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Passwort</label>
-                        <input type="password" id="loginPassword" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="••••••••">
+                        <input type="password" id="loginPassword" autocomplete="current-password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="••••••••">
                     </div>
-                    <button onclick="loginUser()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">
                         Anmelden
                     </button>
-                    <button onclick="toggleSignup()" class="w-full text-blue-600 hover:text-blue-700 font-semibold py-2">
+                    <button type="button" onclick="toggleSignup()" class="w-full text-blue-600 hover:text-blue-700 font-semibold py-2">
                         Neues Konto erstellen
                     </button>
-                </div>
+                </form>
 
+                <!-- Signup Form -->
                 <div id="signupForm" class="hidden mt-6 pt-6 border-t border-gray-200">
                     <h2 class="text-xl font-bold text-gray-800 mb-4">Registrieren</h2>
-                    <div class="space-y-4">
+                    <form onsubmit="event.preventDefault(); signupUser();" class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Name</label>
-                            <input type="text" id="signupName" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Ihr Name">
+                            <input type="text" id="signupName" autocomplete="name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Ihr Name">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">E-Mail</label>
-                            <input type="email" id="signupEmail" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="you@example.com">
+                            <input type="email" id="signupEmail" autocomplete="email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="you@example.com">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Passwort</label>
-                            <input type="password" id="signupPassword" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="••••••••">
+                            <input type="password" id="signupPassword" autocomplete="new-password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="••••••••">
                         </div>
-                        <button onclick="signupUser()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                        <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition">
                             Konto erstellen
                         </button>
-                        <button onclick="toggleSignup()" class="w-full text-gray-600 hover:text-gray-700 py-2">
+                        <button type="button" onclick="toggleSignup()" class="w-full text-gray-600 hover:text-gray-700 py-2">
                             Abbrechen
                         </button>
-                    </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -180,7 +183,7 @@
                                 </tr>
                             </thead>
                             <tbody id="timesheetTable" class="divide-y divide-gray-200">
-                                <!-- Entries will be populated here -->
+                                <!-- Entries populated dynamically -->
                             </tbody>
                         </table>
                     </div>
@@ -194,24 +197,21 @@
     </div>
 
     <script>
-        // Supabase Configuration
         const SUPABASE_URL = 'https://zqqmqacafwaspkrhuijw.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxcW1xYWNhZndhc3Brcmh1aWp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNDY1ODMsImV4cCI6MjEwNTYyMjU4M30.i0m3cRtTej4PoxKRb-E7LRhPzf531nd1BX_tccFgZKc';
         
-        let supabase = null;
+        let supabaseClient = null;
         let currentUser = null;
         let timesheetData = [];
         let currentSession = null;
         let breakActive = false;
         let breakStartTime = null;
 
-        // Initialize Supabase
         function initSupabase() {
             const { createClient } = window.supabase;
-            supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+            supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
         }
 
-        // Initialize on page load
         window.addEventListener('DOMContentLoaded', async () => {
             initSupabase();
             await checkAuthStatus();
@@ -219,18 +219,14 @@
             setInterval(updateClock, 1000);
         });
 
-        // Auth Functions
         async function loginUser() {
             const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
 
-            if (!email || !password) {
-                alert('Bitte E-Mail und Passwort eingeben');
-                return;
-            }
+            if (!email || !password) return;
 
             try {
-                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
                 if (error) throw error;
 
                 currentUser = data.user;
@@ -246,13 +242,10 @@
             const email = document.getElementById('signupEmail').value.trim();
             const password = document.getElementById('signupPassword').value;
 
-            if (!name || !email || !password) {
-                alert('Bitte alle Felder ausfüllen');
-                return;
-            }
+            if (!name || !email || !password) return;
 
             try {
-                const { data, error } = await supabase.auth.signUp({
+                const { data, error } = await supabaseClient.auth.signUp({
                     email,
                     password,
                     options: { data: { display_name: name } }
@@ -262,9 +255,6 @@
 
                 alert('Konto erstellt! Bitte melden Sie sich an.');
                 toggleSignup();
-                document.getElementById('signupName').value = '';
-                document.getElementById('signupEmail').value = '';
-                document.getElementById('signupPassword').value = '';
             } catch (e) {
                 alert('Registrierung fehlgeschlagen: ' + e.message);
             }
@@ -272,7 +262,7 @@
 
         async function checkAuthStatus() {
             try {
-                const { data } = await supabase.auth.getSession();
+                const { data } = await supabaseClient.auth.getSession();
                 if (data?.session) {
                     currentUser = data.session.user;
                     showMainApp();
@@ -284,7 +274,7 @@
         }
 
         async function logout() {
-            await supabase.auth.signOut();
+            await supabaseClient.auth.signOut();
             currentUser = null;
             timesheetData = [];
             currentSession = null;
@@ -303,7 +293,6 @@
             updateButtonStates();
         }
 
-        // Clock Functions
         async function clockIn() {
             if (!currentUser) return;
 
@@ -312,7 +301,7 @@
             const nowIso = new Date().toISOString();
 
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('timesheets')
                     .insert({
                         user_id: currentUser.id,
@@ -341,7 +330,7 @@
             try {
                 const breakMinutes = breakActive ? calculateBreak() : (currentSession.break_minutes || 0);
 
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from('timesheets')
                     .update({
                         end_time: new Date().toISOString(),
@@ -392,7 +381,6 @@
                 clockOutBtn.classList.remove('hidden');
                 breakBtn.classList.remove('hidden');
                 statusBadge.innerHTML = '<span class="inline-block bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">Angestempelt</span>';
-                
                 breakBtn.textContent = breakActive ? '⏵ Pause beenden' : '⏸ Pause';
             } else {
                 clockInBtn.classList.remove('hidden');
@@ -402,7 +390,6 @@
             }
         }
 
-        // Time Display
         function updateClock() {
             const now = new Date();
             document.getElementById('currentTime').textContent = 
@@ -429,12 +416,11 @@
             }
         }
 
-        // Load Timesheets
         async function loadTimesheets() {
             if (!currentUser) return;
 
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('timesheets')
                     .select('*')
                     .eq('user_id', currentUser.id)
@@ -444,11 +430,8 @@
                 if (error) throw error;
 
                 timesheetData = data || [];
-                
-                // Prüfen, ob eine offene Sitzung existiert
                 currentSession = timesheetData.find(entry => !entry.end_time) || null;
                 updateButtonStates();
-
                 renderTimesheets();
                 updateStats();
             } catch (e) {
@@ -502,7 +485,7 @@
             if (!confirm('Diesen Eintrag wirklich löschen?')) return;
 
             try {
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from('timesheets')
                     .delete()
                     .eq('id', id);
@@ -514,13 +497,11 @@
             }
         }
 
-        // Stats
         function updateStats() {
             const now = new Date();
             const todayStr = now.toISOString().split('T')[0];
             const currentMonthStr = todayStr.substring(0, 7);
 
-            // Wochenstart (Montag) berechnen
             const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1;
             const weekStart = new Date(now);
             weekStart.setDate(now.getDate() - dayOfWeek);
@@ -548,7 +529,6 @@
             document.getElementById('monthHours').textContent = monthHours.toFixed(1) + 'h';
         }
 
-        // Export
         function exportToCSV() {
             let csv = 'Datum,Startzeit,Endzeit,Pause (Min),Stunden,Projekt,Notizen\n';
 
