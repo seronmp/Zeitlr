@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stundenerfassungs-App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50">
+    <div id="app">
+        <!-- Login Screen -->
+        <div id="loginScreen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-blue-800">
+            <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">Zeiterfassung</h1>
+                <p class="text-gray-600 mb-6">Stundenerfassungs-Management für Ihr Team</p>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">E-Mail</label>
+                        <input type="email" id="loginEmail" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="you@example.com">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Passwort</label>
+                        <input type="password" id="loginPassword" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="••••••••">
+                    </div>
+                    <button onclick="loginUser()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                        Anmelden
+                    </button>
+                    <button onclick="toggleSignup()" class="w-full text-blue-600 hover:text-blue-700 font-semibold py-2">
+                        Neues Konto erstellen
+                    </button>
+                </div>
+
+                <div id="signupForm" class="hidden mt-6 pt-6 border-t border-gray-200">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">Registrieren</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                            <input type="text" id="signupName" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Ihr Name">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">E-Mail</label>
+                            <input type="email" id="signupEmail" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="you@example.com">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Passwort</label>
+                            <input type="password" id="signupPassword" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="••••••••">
+                        </div>
+                        <button onclick="signupUser()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                            Konto erstellen
+                        </button>
+                        <button onclick="toggleSignup()" class="w-full text-gray-600 hover:text-gray-700 py-2">
+                            Abbrechen
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main App Screen -->
+        <div id="mainScreen" class="hidden">
+            <!-- Header -->
+            <nav class="bg-white shadow">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex justify-between items-center h-16">
+                        <div class="flex items-center">
+                            <h1 class="text-2xl font-bold text-blue-600">⏱️ Zeiterfassung</h1>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <span id="userDisplayName" class="text-gray-700 font-medium"></span>
+                            <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                                Abmelden
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <p class="text-gray-600 text-sm font-medium">Heute</p>
+                        <p class="text-3xl font-bold text-blue-600" id="todayHours">0h</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <p class="text-gray-600 text-sm font-medium">Diese Woche</p>
+                        <p class="text-3xl font-bold text-green-600" id="weekHours">0h</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <p class="text-gray-600 text-sm font-medium">Diesen Monat</p>
+                        <p class="text-3xl font-bold text-purple-600" id="monthHours">0h</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <p class="text-gray-600 text-sm font-medium">Status</p>
+                        <p class="text-2xl font-bold" id="statusBadge">
+                            <span class="inline-block bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm">Ausgestempelt</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Clock In/Out Section -->
+                <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Stempeluhr</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Current Time Display -->
+                        <div class="bg-gray-50 rounded-lg p-6">
+                            <p class="text-gray-600 text-sm mb-2">Aktuelle Zeit</p>
+                            <p class="text-4xl font-bold text-blue-600" id="currentTime">00:00</p>
+                            <p class="text-gray-600 text-sm mt-2" id="currentDate">—</p>
+                        </div>
+
+                        <!-- Session Info -->
+                        <div class="bg-gray-50 rounded-lg p-6">
+                            <p class="text-gray-600 text-sm mb-2">Aktuelle Schicht</p>
+                            <div id="sessionInfo" class="space-y-2">
+                                <p class="text-lg"><span class="font-semibold">Start:</span> <span id="sessionStart" class="text-blue-600">—</span></p>
+                                <p class="text-lg"><span class="font-semibold">Pause:</span> <span id="sessionBreak" class="text-orange-600">0 Min</span></p>
+                                <p class="text-lg"><span class="font-semibold">Arbeitszeit:</span> <span id="sessionWorked" class="text-green-600">0h 0m</span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Clock Buttons -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                        <button id="clockInBtn" onclick="clockIn()" class="hidden bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition text-lg">
+                            ✓ Anstempeln
+                        </button>
+                        <button id="clockOutBtn" onclick="clockOut()" class="hidden bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition text-lg">
+                            ✕ Abstempeln
+                        </button>
+                        <button id="breakBtn" onclick="toggleBreak()" class="hidden bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-lg transition text-lg">
+                            ⏸ Pause
+                        </button>
+                    </div>
+
+                    <!-- Project/Notes -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Projekt</label>
+                            <select id="projectSelect" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="">-- Projekt wählen --</option>
+                                <option value="Büro">Büro</option>
+                                <option value="Schreinerei">Schreinerei</option>
+                                <option value="Wartung">Wartung</option>
+                                <option value="Admin">Admin</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Notizen</label>
+                            <input type="text" id="notesInput" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="z.B. Versammlung, Training...">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timesheet History -->
+                <div class="bg-white rounded-lg shadow-lg p-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">Stundenerfassungshistorie</h2>
+                        <button onclick="exportToCSV()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                            📥 Als CSV exportieren
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-200">
+                                    <th class="px-4 py-3 text-left font-semibold text-gray-700">Datum</th>
+                                    <th class="px-4 py-3 text-left font-semibold text-gray-700">Start</th>
+                                    <th class="px-4 py-3 text-left font-semibold text-gray-700">Ende</th>
+                                    <th class="px-4 py-3 text-left font-semibold text-gray-700">Pause</th>
+                                    <th class="px-4 py-3 text-left font-semibold text-gray-700">Stunden</th>
+                                    <th class="px-4 py-3 text-left font-semibold text-gray-700">Projekt</th>
+                                    <th class="px-4 py-3 text-left font-semibold text-gray-700">Notizen</th>
+                                    <th class="px-4 py-3 text-left font-semibold text-gray-700">Aktion</th>
+                                </tr>
+                            </thead>
+                            <tbody id="timesheetTable" class="divide-y divide-gray-200">
+                                <!-- Entries will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="emptyState" class="text-center py-8 text-gray-500">
+                        Keine Einträge noch. Stempeln Sie an, um zu starten!
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Supabase Configuration
+        const SUPABASE_URL = 'https://your-project.supabase.co';
+        const SUPABASE_KEY = 'your-anon-key';
+        
+        let supabase;
+        let currentUser = null;
+        let timesheetData = [];
+        let currentSession = null;
+        let breakActive = false;
+        let breakStartTime = null;
+
+        // Initialize Supabase (update with your credentials)
+        async function initSupabase() {
+            const { createClient } = window.supabase;
+            supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            await initSupabase();
+            checkAuthStatus();
+            updateClock();
+            setInterval(updateClock, 1000);
+            loadTimesheets();
+            setInterval(loadTimesheets, 5000);
+        });
+
+        // Auth Functions
+        async function loginUser() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            if (!email || !password) {
+                alert('Bitte E-Mail und Passwort eingeben');
+                return;
+            }
+
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (error) {
+                    alert('Login fehlgeschlagen: ' + error.message);
+                    return;
+                }
+
+                currentUser = data.user;
+                showMainApp();
+                loadTimesheets();
+            } catch (e) {
+                alert('Fehler: ' + e.message);
+            }
+        }
+
+        async function signupUser() {
+            const name = document.getElementById('signupName').value;
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+
+            if (!name || !email || !password) {
+                alert('Bitte alle Felder ausfüllen');
+                return;
+            }
+
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            display_name: name
+                        }
+                    }
+                });
+
+                if (error) {
+                    alert('Registrierung fehlgeschlagen: ' + error.message);
+                    return;
+                }
+
+                alert('Konto erstellt! Bitte melden Sie sich an.');
+                toggleSignup();
+                document.getElementById('signupName').value = '';
+                document.getElementById('signupEmail').value = '';
+                document.getElementById('signupPassword').value = '';
+            } catch (e) {
+                alert('Fehler: ' + e.message);
+            }
+        }
+
+        async function checkAuthStatus() {
+            try {
+                const { data } = await supabase.auth.getSession();
+                if (data?.session) {
+                    currentUser = data.session.user;
+                    showMainApp();
+                    loadTimesheets();
+                }
+            } catch (e) {
+                console.log('No active session');
+            }
+        }
+
+        function logout() {
+            supabase.auth.signOut();
+            currentUser = null;
+            timesheetData = [];
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('mainScreen').classList.add('hidden');
+        }
+
+        function toggleSignup() {
+            document.getElementById('signupForm').classList.toggle('hidden');
+        }
+
+        function showMainApp() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainScreen').classList.remove('hidden');
+            document.getElementById('userDisplayName').textContent = currentUser?.email || 'Benutzer';
+            updateButtonStates();
+        }
+
+        // Clock Functions
+        async function clockIn() {
+            if (!currentUser) return;
+
+            const project = document.getElementById('projectSelect').value;
+            const notes = document.getElementById('notesInput').value;
+
+            try {
+                const { data, error } = await supabase
+                    .from('timesheets')
+                    .insert({
+                        user_id: currentUser.id,
+                        start_time: new Date().toISOString(),
+                        project: project || 'Unbekannt',
+                        notes: notes,
+                        date: new Date().toISOString().split('T')[0]
+                    })
+                    .select();
+
+                if (error) throw error;
+
+                currentSession = data[0];
+                breakActive = false;
+                breakStartTime = null;
+                updateButtonStates();
+                loadTimesheets();
+                alert('Angestempelt um ' + new Date().toLocaleTimeString('de-DE'));
+            } catch (e) {
+                alert('Fehler: ' + e.message);
+            }
+        }
+
+        async function clockOut() {
+            if (!currentUser || !currentSession) return;
+
+            try {
+                const breakMinutes = breakActive ? calculateBreak() : (currentSession.break_minutes || 0);
+
+                const { error } = await supabase
+                    .from('timesheets')
+                    .update({
+                        end_time: new Date().toISOString(),
+                        break_minutes: breakMinutes
+                    })
+                    .eq('id', currentSession.id);
+
+                if (error) throw error;
+
+                currentSession = null;
+                breakActive = false;
+                breakStartTime = null;
+                updateButtonStates();
+                loadTimesheets();
+                alert('Ausgestempelt um ' + new Date().toLocaleTimeString('de-DE'));
+            } catch (e) {
+                alert('Fehler: ' + e.message);
+            }
+        }
+
+        function toggleBreak() {
+            if (breakActive) {
+                breakActive = false;
+            } else {
+                breakActive = true;
+                breakStartTime = new Date();
+            }
+            updateButtonStates();
+        }
+
+        function calculateBreak() {
+            if (!breakStartTime) return 0;
+            return Math.floor((new Date() - breakStartTime) / 60000);
+        }
+
+        function updateButtonStates() {
+            const clockInBtn = document.getElementById('clockInBtn');
+            const clockOutBtn = document.getElementById('clockOutBtn');
+            const breakBtn = document.getElementById('breakBtn');
+            const statusBadge = document.getElementById('statusBadge');
+
+            if (currentSession) {
+                clockInBtn.classList.add('hidden');
+                clockOutBtn.classList.remove('hidden');
+                breakBtn.classList.remove('hidden');
+                statusBadge.innerHTML = '<span class="inline-block bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">Angestempelt</span>';
+                
+                if (breakActive) {
+                    breakBtn.textContent = '⏵ Pause beenden';
+                } else {
+                    breakBtn.textContent = '⏸ Pause';
+                }
+            } else {
+                clockInBtn.classList.remove('hidden');
+                clockOutBtn.classList.add('hidden');
+                breakBtn.classList.add('hidden');
+                statusBadge.innerHTML = '<span class="inline-block bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm">Ausgestempelt</span>';
+            }
+        }
+
+        // Time Display
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = 
+                now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+            
+            document.getElementById('currentDate').textContent = 
+                now.toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+            if (currentSession) {
+                const startTime = new Date(currentSession.start_time);
+                document.getElementById('sessionStart').textContent = 
+                    startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+
+                let breakMinutes = currentSession.break_minutes || 0;
+                if (breakActive && breakStartTime) {
+                    breakMinutes += calculateBreak();
+                }
+                document.getElementById('sessionBreak').textContent = breakMinutes + ' Min';
+
+                const worked = Math.floor((now - startTime) / 60000) - breakMinutes;
+                const hours = Math.floor(worked / 60);
+                const minutes = worked % 60;
+                document.getElementById('sessionWorked').textContent = 
+                    `${hours}h ${minutes}m`;
+            }
+        }
+
+        // Load Timesheets
+        async function loadTimesheets() {
+            if (!currentUser) return;
+
+            try {
+                const { data, error } = await supabase
+                    .from('timesheets')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('date', { ascending: false })
+                    .order('start_time', { ascending: false });
+
+                if (error) throw error;
+
+                timesheetData = data || [];
+                renderTimesheets();
+                updateStats();
+            } catch (e) {
+                console.error('Fehler beim Laden:', e.message);
+            }
+        }
+
+        function renderTimesheets() {
+            const table = document.getElementById('timesheetTable');
+            const emptyState = document.getElementById('emptyState');
+
+            if (timesheetData.length === 0) {
+                table.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            table.innerHTML = timesheetData.map((entry, index) => {
+                const startTime = new Date(entry.start_time);
+                const endTime = entry.end_time ? new Date(entry.end_time) : null;
+                
+                let hoursWorked = 0;
+                if (endTime) {
+                    const diffMs = endTime - startTime;
+                    const breakMs = (entry.break_minutes || 0) * 60000;
+                    hoursWorked = ((diffMs - breakMs) / 3600000).toFixed(2);
+                }
+
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-900">${entry.date}</td>
+                        <td class="px-4 py-3 text-gray-900">${startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</td>
+                        <td class="px-4 py-3 text-gray-900">${endTime ? endTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                        <td class="px-4 py-3 text-gray-900">${entry.break_minutes || 0} Min</td>
+                        <td class="px-4 py-3 font-semibold text-green-600">${hoursWorked} h</td>
+                        <td class="px-4 py-3 text-gray-900">${entry.project || '—'}</td>
+                        <td class="px-4 py-3 text-gray-600 text-xs">${entry.notes || '—'}</td>
+                        <td class="px-4 py-3">
+                            <button onclick="deleteEntry('${entry.id}')" class="text-red-600 hover:text-red-800 font-semibold">
+                                Löschen
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function deleteEntry(id) {
+            if (!confirm('Diesen Eintrag löschen?')) return;
+
+            try {
+                const { error } = await supabase
+                    .from('timesheets')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) throw error;
+                loadTimesheets();
+                alert('Eintrag gelöscht');
+            } catch (e) {
+                alert('Fehler: ' + e.message);
+            }
+        }
+
+        // Stats
+        function updateStats() {
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
+            const weekStartDate = weekStart.toISOString().split('T')[0];
+
+            let todayHours = 0;
+            let weekHours = 0;
+            let monthHours = 0;
+
+            timesheetData.forEach(entry => {
+                if (!entry.end_time) return;
+
+                const startTime = new Date(entry.start_time);
+                const endTime = new Date(entry.end_time);
+                const breakMs = (entry.break_minutes || 0) * 60000;
+                const hoursWorked = (endTime - startTime - breakMs) / 3600000;
+
+                if (entry.date === today) todayHours += hoursWorked;
+                if (entry.date >= weekStartDate && entry.date <= today) weekHours += hoursWorked;
+                if (entry.date.substring(0, 7) === today.substring(0, 7)) monthHours += hoursWorked;
+            });
+
+            document.getElementById('todayHours').textContent = todayHours.toFixed(1) + 'h';
+            document.getElementById('weekHours').textContent = weekHours.toFixed(1) + 'h';
+            document.getElementById('monthHours').textContent = monthHours.toFixed(1) + 'h';
+        }
+
+        // Export
+        function exportToCSV() {
+            let csv = 'Datum,Startzeit,Endzeit,Pause (Min),Stunden,Projekt,Notizen\n';
+
+            timesheetData.forEach(entry => {
+                if (!entry.end_time) return;
+
+                const startTime = new Date(entry.start_time);
+                const endTime = new Date(entry.end_time);
+                const breakMs = (entry.break_minutes || 0) * 60000;
+                const hoursWorked = ((endTime - startTime - breakMs) / 3600000).toFixed(2);
+
+                const row = [
+                    entry.date,
+                    startTime.toLocaleTimeString('de-DE'),
+                    endTime.toLocaleTimeString('de-DE'),
+                    entry.break_minutes || 0,
+                    hoursWorked,
+                    entry.project || '',
+                    (entry.notes || '').replace(/"/g, '""')
+                ];
+
+                csv += '"' + row.join('","') + '"\n';
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Zeiterfassung_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+        }
+    </script>
+</body>
+</html>
