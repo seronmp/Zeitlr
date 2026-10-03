@@ -1,0 +1,9 @@
+{
+  "name": "zeiterfassung-app",
+  "version": "1.0.0",
+  "description": "Zeiterfassung mit Neon und Vercel",
+  "main": "index.html",
+  "dependencies": {
+    "pg": "^8.11.3"
+  }
+}
