@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stundenerfassungs-App</title>
-    <!-- Tailwind CSS (Play CDN für Development - für Produktion bitte via CLI/PostCSS einbinden) -->
+    <!-- Tailwind CSS (Play CDN für Development - für Produktion via CLI/PostCSS empfohlen) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-50">
     <div id="app">
@@ -197,28 +196,19 @@
     </div>
 
     <script>
-        const SUPABASE_URL = 'https://zqqmqacafwaspkrhuijw.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxcW1xYWNhZndhc3Brcmh1aWp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNDY1ODMsImV4cCI6MjEwNTYyMjU4M30.i0m3cRtTej4PoxKRb-E7LRhPzf531nd1BX_tccFgZKc';
-        
-        let supabaseClient = null;
         let currentUser = null;
         let timesheetData = [];
         let currentSession = null;
         let breakActive = false;
         let breakStartTime = null;
 
-        function initSupabase() {
-            const { createClient } = window.supabase;
-            supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
-        }
-
         window.addEventListener('DOMContentLoaded', async () => {
-            initSupabase();
             await checkAuthStatus();
             updateClock();
             setInterval(updateClock, 1000);
         });
 
+        // 1. Login via API (/api/login)
         async function loginUser() {
             const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
@@ -226,10 +216,18 @@
             if (!email || !password) return;
 
             try {
-                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-                if (error) throw error;
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Login fehlgeschlagen');
 
                 currentUser = data.user;
+                sessionStorage.setItem('timeAppUser', JSON.stringify(currentUser));
+                
                 showMainApp();
                 await loadTimesheets();
             } catch (e) {
@@ -238,33 +236,14 @@
         }
 
         async function signupUser() {
-            const name = document.getElementById('signupName').value.trim();
-            const email = document.getElementById('signupEmail').value.trim();
-            const password = document.getElementById('signupPassword').value;
-
-            if (!name || !email || !password) return;
-
-            try {
-                const { data, error } = await supabaseClient.auth.signUp({
-                    email,
-                    password,
-                    options: { data: { display_name: name } }
-                });
-
-                if (error) throw error;
-
-                alert('Konto erstellt! Bitte melden Sie sich an.');
-                toggleSignup();
-            } catch (e) {
-                alert('Registrierung fehlgeschlagen: ' + e.message);
-            }
+            alert('Die Registrierung erfolgt derzeit zentral über die Administration.');
         }
 
         async function checkAuthStatus() {
             try {
-                const { data } = await supabaseClient.auth.getSession();
-                if (data?.session) {
-                    currentUser = data.session.user;
+                const savedUser = sessionStorage.getItem('timeAppUser');
+                if (savedUser) {
+                    currentUser = JSON.parse(savedUser);
                     showMainApp();
                     await loadTimesheets();
                 }
@@ -273,8 +252,8 @@
             }
         }
 
-        async function logout() {
-            await supabaseClient.auth.signOut();
+        function logout() {
+            sessionStorage.removeItem('timeAppUser');
             currentUser = null;
             timesheetData = [];
             currentSession = null;
@@ -289,10 +268,11 @@
         function showMainApp() {
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('mainScreen').classList.remove('hidden');
-            document.getElementById('userDisplayName').textContent = currentUser?.user_metadata?.display_name || currentUser?.email || 'Benutzer';
+            document.getElementById('userDisplayName').textContent = currentUser?.display_name || currentUser?.email || 'Benutzer';
             updateButtonStates();
         }
 
+        // 2. Anstempeln (Clock In) via API (/api/timesheets)
         async function clockIn() {
             if (!currentUser) return;
 
@@ -301,20 +281,22 @@
             const nowIso = new Date().toISOString();
 
             try {
-                const { data, error } = await supabaseClient
-                    .from('timesheets')
-                    .insert({
+                const response = await fetch('/api/timesheets', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
                         user_id: currentUser.id,
                         start_time: nowIso,
                         project: project || 'Unbekannt',
                         notes: notes,
                         date: nowIso.split('T')[0]
                     })
-                    .select();
+                });
 
-                if (error) throw error;
+                if (!response.ok) throw new Error('Fehler beim Anstempeln');
 
-                currentSession = data[0];
+                const newEntry = await response.json();
+                currentSession = newEntry;
                 breakActive = false;
                 breakStartTime = null;
                 updateButtonStates();
@@ -324,21 +306,24 @@
             }
         }
 
+        // 3. Abstempeln (Clock Out) via API (/api/timesheets)
         async function clockOut() {
             if (!currentUser || !currentSession) return;
 
             try {
                 const breakMinutes = breakActive ? calculateBreak() : (currentSession.break_minutes || 0);
 
-                const { error } = await supabaseClient
-                    .from('timesheets')
-                    .update({
+                const response = await fetch('/api/timesheets', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: currentSession.id,
                         end_time: new Date().toISOString(),
                         break_minutes: breakMinutes
                     })
-                    .eq('id', currentSession.id);
+                });
 
-                if (error) throw error;
+                if (!response.ok) throw new Error('Fehler beim Abstempeln');
 
                 currentSession = null;
                 breakActive = false;
@@ -416,20 +401,15 @@
             }
         }
 
+        // 4. Laden der Timings via API (/api/timesheets)
         async function loadTimesheets() {
             if (!currentUser) return;
 
             try {
-                const { data, error } = await supabaseClient
-                    .from('timesheets')
-                    .select('*')
-                    .eq('user_id', currentUser.id)
-                    .order('date', { ascending: false })
-                    .order('start_time', { ascending: false });
+                const response = await fetch(`/api/timesheets?userId=${currentUser.id}`);
+                if (!response.ok) throw new Error('Fehler beim Laden');
 
-                if (error) throw error;
-
-                timesheetData = data || [];
+                timesheetData = await response.json();
                 currentSession = timesheetData.find(entry => !entry.end_time) || null;
                 updateButtonStates();
                 renderTimesheets();
@@ -481,16 +461,17 @@
             }).join('');
         }
 
+        // 5. Löschen via API (/api/timesheets)
         async function deleteEntry(id) {
             if (!confirm('Diesen Eintrag wirklich löschen?')) return;
 
             try {
-                const { error } = await supabaseClient
-                    .from('timesheets')
-                    .delete()
-                    .eq('id', id);
+                const response = await fetch(`/api/timesheets?id=${id}`, {
+                    method: 'DELETE'
+                });
 
-                if (error) throw error;
+                if (!response.ok) throw new Error('Fehler beim Löschen');
+
                 await loadTimesheets();
             } catch (e) {
                 alert('Fehler beim Löschen: ' + e.message);
@@ -560,7 +541,7 @@
             link.click();
         }
 
-        // Explicitly attach to window scope to ensure inline onclick handlers resolve properly
+        // Global scope binding
         window.loginUser = loginUser;
         window.signupUser = signupUser;
         window.logout = logout;
